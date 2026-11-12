@@ -1,0 +1,43 @@
+name: Daily NBK Currency ETL
+
+# Настройка расписания (запуск каждый день в 11:00 по времени Астаны/Алматы, это 06:00 UTC)
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  # Эта строчка позволяет запускать скрипт вручную кнопкой в браузере
+  workflow_dispatch:
+
+# Даем роботу права на сохранение обновленной базы данных обратно в репозиторий
+permissions:
+  contents: write
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Скачиваем ваш код на виртуальный сервер GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Устанавливаем библиотеку requests
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Запускаем ваш ETL-скрипт
+      - name: Run ETL script
+        run: python currency_etl.py
+
+      # 5. Сохраняем обновленный файл базы данных nbk_rates.db обратно в GitHub
+      - name: Commit and push updated database
+        run: |
+          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.name "github-actions[bot]"
+          git add nbk_rates.db
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update currency rates" && git push)
